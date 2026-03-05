@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MOTO BETS — F1 & MotoGP 2026</title>
+<title>VP Prono</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -287,7 +287,12 @@
   .mb-status { font-size:.75rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .65rem; border-radius:20px; }
   .mb-status.pending { background:rgba(255,255,255,.05); color: var(--muted); border:1px solid var(--border); }
   .mb-status.scored { background:rgba(245,166,35,.1); color:var(--gold); border:1px solid rgba(245,166,35,.2); }
-  .mb-pts { font-family:'Orbitron'; font-weight:700; color:var(--gold); }
+  .mb-pts { font-family:'Orbitron'; font-weight:700; color:var(--gold); font-size:1.1rem; }
+  .mb-breakdown { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem; }
+  .mb-chip { font-family:'Share Tech Mono',monospace; font-size:.65rem; letter-spacing:.05em; padding:.2rem .5rem; border-radius:4px; display:flex; align-items:center; gap:.25rem; }
+  .mb-chip.ok    { background:rgba(0,200,100,.12); color:#0c8; border:1px solid rgba(0,200,100,.2); }
+  .mb-chip.partial { background:rgba(245,166,35,.1); color:var(--gold); border:1px solid rgba(245,166,35,.2); }
+  .mb-chip.miss  { background:rgba(255,255,255,.04); color:var(--muted); border:1px solid var(--border); }
 
   /* Profile tabs */
   .profile-sport-tabs { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
@@ -531,7 +536,7 @@
 <!-- ===== LOGIN MODAL ===== -->
 <div id="loginModal">
   <div class="login-box">
-    <div class="login-logo">F1<span class="f1c">BETS</span> <span style="color:var(--surface3)">·</span> MOTO<span class="mgpc" style="color:var(--orange)">GP</span></div>
+    <div class="login-logo">VP <span class="f1c">PRONO</span></div>
     <div class="login-sub" id="loginSubText">Connectez-vous ou créez votre compte</div>
 
     <!-- Step 1: choose user or create -->
@@ -649,7 +654,7 @@
 </div>
 
 <header>
-  <div class="logo" ondblclick="showAdminModal()" style="cursor:default" title="">F1<span class="f1c">BETS</span><span class="sep"> · </span>MOTO<span class="mgpc">GP</span></div>
+  <div class="logo" ondblclick="showAdminModal()" style="cursor:default" title="">VP <span class="f1c">PRONO</span></div>
   <div class="sport-switcher" id="sportSwitcher">
     <button class="sport-tab f1-tab active" onclick="switchSport('f1')">🏎️ F1</button>
     <button class="sport-tab mgp-tab" onclick="switchSport('motogp')">🏍️ MotoGP</button>
@@ -917,6 +922,11 @@ const ADMIN_PIN = '1234'; // Change this to your desired admin PIN
 const ADMIN_NAME = 'Admin';
 let isAdminSession = false; // true when admin is logged in
 
+// ===== SEASON BET POINTS =====
+// Points awarded when season champions are confirmed (set by admin)
+// state.seasonResults = { f1Champ, f1Team, mgpChamp, mgpTeam }
+const SEASON_BET_PTS = { champ: 50, team: 30 };
+
 // ===== STATIC DATA =====
 const F1_DRIVERS = [
   {id:'NOR', name:'Norris #4'},
@@ -1090,6 +1100,7 @@ let state = {
   users: [],
   bets: {},       // bets[userId][raceId]
   results: {},    // results[raceId]
+  seasonResults: null, // { f1Champ, f1Team, mgpChamp, mgpTeam }
   currentUser: null, // always require login
   currentSport: localStorage.getItem('f1bets_sport') || 'f1',
   profileTab: 'f1',
@@ -1137,6 +1148,11 @@ onSnapshot(collection(db,'bets'), snap => {
   refresh(); setSynced();
 }, e=>{ console.warn('bets snap error',e); setSyncError(); });
 
+onSnapshot(doc(db,'meta','seasonResults'), snap=>{
+  state.seasonResults = snap.exists() ? snap.data() : null;
+  renderIfOnProfile();
+});
+
 onSnapshot(collection(db,'results'), snap => {
   state.results = {};
   snap.docs.forEach(d=>{ state.results[d.id]=d.data(); });
@@ -1177,6 +1193,43 @@ window.switchSport = sport => {
 };
 
 // ===== POINTS =====
+// Returns detailed breakdown of points per prediction
+function calcPtsDetail(bet, res){
+  if(!bet||!res) return {total:0, items:[]};
+  const items = [];
+  // GP podium
+  if(bet.p1&&bet.p1===res.p1)       items.push({label:'1er exact',    pts:5,  ok:true});
+  else if(bet.p1&&[res.p1,res.p2,res.p3].includes(bet.p1)) items.push({label:'1er dans podium', pts:1, ok:'partial'});
+  else if(bet.p1)                    items.push({label:'1er',          pts:0,  ok:false});
+
+  if(bet.p2&&bet.p2===res.p2)       items.push({label:'2e exact',     pts:4,  ok:true});
+  else if(bet.p2&&[res.p1,res.p2,res.p3].includes(bet.p2)) items.push({label:'2e dans podium',  pts:1, ok:'partial'});
+  else if(bet.p2)                    items.push({label:'2e',           pts:0,  ok:false});
+
+  if(bet.p3&&bet.p3===res.p3)       items.push({label:'3e exact',     pts:3,  ok:true});
+  else if(bet.p3&&[res.p1,res.p2,res.p3].includes(bet.p3)) items.push({label:'3e dans podium',  pts:1, ok:'partial'});
+  else if(bet.p3)                    items.push({label:'3e',           pts:0,  ok:false});
+
+  if(bet.pole) items.push({label:'Pole',  pts:bet.pole===res.pole?3:0,  ok:bet.pole===res.pole});
+  if(bet.fl)   items.push({label:'Meil. Tour', pts:bet.fl===res.fl?2:0, ok:bet.fl===res.fl});
+
+  // Sprint
+  if(res.sp1||res.sp2||res.sp3){
+    if(bet.sp1&&bet.sp1===res.sp1)   items.push({label:'Sprint 1er exact', pts:3, ok:true});
+    else if(bet.sp1&&[res.sp1,res.sp2,res.sp3].includes(bet.sp1)) items.push({label:'Sprint 1er podium',pts:1,ok:'partial'});
+    else if(bet.sp1)                  items.push({label:'Sprint 1er',       pts:0, ok:false});
+
+    if(bet.sp2&&bet.sp2===res.sp2)   items.push({label:'Sprint 2e exact',  pts:2, ok:true});
+    else if(bet.sp2&&[res.sp1,res.sp2,res.sp3].includes(bet.sp2)) items.push({label:'Sprint 2e podium', pts:1,ok:'partial'});
+    else if(bet.sp2)                  items.push({label:'Sprint 2e',        pts:0, ok:false});
+
+    if(bet.sp3&&bet.sp3===res.sp3)   items.push({label:'Sprint 3e exact',  pts:1, ok:true});
+    else if(bet.sp3&&[res.sp1,res.sp2,res.sp3].includes(bet.sp3)) items.push({label:'Sprint 3e podium', pts:1,ok:'partial'});
+    else if(bet.sp3)                  items.push({label:'Sprint 3e',        pts:0, ok:false});
+  }
+  return {total: items.reduce((s,i)=>s+i.pts,0), items};
+}
+
 function calcPts(bet, res){
   if(!bet||!res) return 0;
   let p=0;
@@ -1204,6 +1257,18 @@ function calcPts(bet, res){
   return p;
 }
 
+function calcSeasonPts(uid){
+  const sb = state.users.find(u=>u.id===uid)?.seasonBets;
+  const sr = state.seasonResults;
+  if(!sb || !sr) return 0;
+  let p = 0;
+  if(sb.f1Champ  && sb.f1Champ  === sr.f1Champ)  p += SEASON_BET_PTS.champ;
+  if(sb.f1Team   && sb.f1Team   === sr.f1Team)    p += SEASON_BET_PTS.team;
+  if(sb.mgpChamp && sb.mgpChamp === sr.mgpChamp)  p += SEASON_BET_PTS.champ;
+  if(sb.mgpTeam  && sb.mgpTeam  === sr.mgpTeam)   p += SEASON_BET_PTS.team;
+  return p;
+}
+
 function totalPtsBySport(uid, sport) {
   const races = ALL_RACES.filter(r => r.sport === sport);
   return races.reduce((s, r) => {
@@ -1214,7 +1279,7 @@ function totalPtsBySport(uid, sport) {
 }
 
 function totalPts(uid) {
-  return totalPtsBySport(uid, 'f1') + totalPtsBySport(uid, 'motogp');
+  return totalPtsBySport(uid, 'f1') + totalPtsBySport(uid, 'motogp') + calcSeasonPts(uid);
 }
 
 function sportPts(uid) { return totalPtsBySport(uid, state.currentSport); }
@@ -1905,13 +1970,55 @@ function showAdminBar(){
     bar.id = 'adminBar';
     bar.style.cssText = 'position:fixed;top:64px;left:0;right:0;z-index:99;background:rgba(245,166,35,.12);border-bottom:2px solid var(--gold);padding:.5rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-family:"Share Tech Mono",monospace;font-size:.72rem;letter-spacing:.1em;color:var(--gold)';
     bar.innerHTML = '<span>⚙️ MODE ADMINISTRATEUR — Cliquez sur une course pour saisir les résultats</span>'
-      + '<button onclick="logoutAdmin()" style="background:rgba(245,166,35,.2);border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:.3rem .8rem;cursor:pointer;font-family:inherit;font-size:.7rem;letter-spacing:.1em">QUITTER</button>';
+      + '<div style="display:flex;gap:.5rem">'
+      + '<button onclick="openSeasonResultsModal()" style="background:rgba(245,166,35,.2);border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:.3rem .8rem;cursor:pointer;font-family:inherit;font-size:.7rem;letter-spacing:.1em">🏆 Résultats Saison</button>'
+      + '<button onclick="logoutAdmin()" style="background:rgba(245,166,35,.2);border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:.3rem .8rem;cursor:pointer;font-family:inherit;font-size:.7rem;letter-spacing:.1em">QUITTER</button>'
+      + '</div>';
     document.body.appendChild(bar);
   }
   bar.style.display = 'flex';
   // Offset pages to account for admin bar
   document.querySelectorAll('.page').forEach(p => p.style.paddingTop = '3.5rem');
 }
+
+window.openSeasonResultsModal = () => {
+  // Populate selects
+  const f1opts = '<option value="">— Non défini —</option>' + F1_DRIVERS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const f1teamopts = '<option value="">— Non défini —</option>' + F1_TEAMS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  const mgpopts = '<option value="">— Non défini —</option>' + MOTOGP_RIDERS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const mgpteamopts = '<option value="">— Non défini —</option>' + MOTOGP_TEAMS.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  document.getElementById('sr-f1-champ').innerHTML = f1opts;
+  document.getElementById('sr-f1-team').innerHTML = f1teamopts;
+  document.getElementById('sr-mgp-champ').innerHTML = mgpopts;
+  document.getElementById('sr-mgp-team').innerHTML = mgpteamopts;
+  // Pre-fill with existing values
+  const sr = state.seasonResults;
+  if(sr){
+    if(sr.f1Champ)  document.getElementById('sr-f1-champ').value  = sr.f1Champ;
+    if(sr.f1Team)   document.getElementById('sr-f1-team').value   = sr.f1Team;
+    if(sr.mgpChamp) document.getElementById('sr-mgp-champ').value = sr.mgpChamp;
+    if(sr.mgpTeam)  document.getElementById('sr-mgp-team').value  = sr.mgpTeam;
+  }
+  document.getElementById('seasonResultsModal').style.display = 'flex';
+};
+window.closeSeasonResultsModal = () => {
+  document.getElementById('seasonResultsModal').style.display = 'none';
+};
+window.saveSeasonResults = async () => {
+  if(!isAdminSession){ toast('🔒 Admin uniquement', false); return; }
+  const data = {
+    f1Champ:  document.getElementById('sr-f1-champ').value  || null,
+    f1Team:   document.getElementById('sr-f1-team').value   || null,
+    mgpChamp: document.getElementById('sr-mgp-champ').value || null,
+    mgpTeam:  document.getElementById('sr-mgp-team').value  || null,
+  };
+  setSyncing();
+  try {
+    await setDoc(doc(db,'meta','seasonResults'), data);
+    closeSeasonResultsModal();
+    toast('🏆 Résultats saison enregistrés !', true);
+  } catch(e){ toast('❌ Erreur', false); setSyncError(); }
+};
 
 window.logoutAdmin = () => {
   isAdminSession = false;
@@ -2274,38 +2381,44 @@ function renderSeasonBets(uid){
     card.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;color:var(--muted);font-size:.88rem">Aucun pari saison enregistré.</div>';
     return;
   }
+  const sr = state.seasonResults;
   const f1c  = F1_DRIVERS.find(d=>d.id===sb.f1Champ)?.name  || sb.f1Champ  || '—';
   const f1t  = F1_TEAMS.find(t=>t.id===sb.f1Team)?.name     || sb.f1Team   || '—';
   const mgpc = MOTOGP_RIDERS.find(d=>d.id===sb.mgpChamp)?.name || sb.mgpChamp || '—';
   const mgpt = MOTOGP_TEAMS.find(t=>t.id===sb.mgpTeam)?.name   || sb.mgpTeam  || '—';
+
+  const betRow = (label, color, name, betVal, resVal, ptsVal) => {
+    const known = sr && resVal;
+    const won   = known && betVal === resVal;
+    const badge = known
+      ? (won
+          ? `<span style="font-family:'Orbitron';font-size:.75rem;font-weight:700;color:var(--gold)">+${ptsVal} pts ✓</span>`
+          : `<span style="font-size:.72rem;color:var(--muted)">✗ ${resVal ? '→ ' + resVal : ''}</span>`)
+      : `<span style="font-size:.68rem;color:var(--muted);font-family:'Share Tech Mono',monospace;letter-spacing:.06em">EN ATTENTE</span>`;
+    return `<div style="padding:.9rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:${color};margin-bottom:.25rem">${label}</div>
+        <div style="font-weight:700;font-size:.92rem">${name}</div>
+      </div>
+      <div>${badge}</div>
+    </div>`;
+  };
+
+  const totalSeason = calcSeasonPts(uid);
+
   card.innerHTML = `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);border-right:1px solid var(--border)">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:.35rem">🏎️ Champion F1</div>
-          <div style="font-weight:700;font-size:.95rem">${f1c}</div>
-        </div>
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:.35rem">🏗️ Écurie F1</div>
-          <div style="font-weight:700;font-size:.95rem">${f1t}</div>
-        </div>
-        <div style="padding:1rem 1.25rem;border-right:1px solid var(--border)">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--orange);margin-bottom:.35rem">🏍️ Champion MotoGP</div>
-          <div style="font-weight:700;font-size:.95rem">${mgpc}</div>
-        </div>
-        <div style="padding:1rem 1.25rem">
-          <div style="font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--orange);margin-bottom:.35rem">🏗️ Équipe MotoGP</div>
-          <div style="font-weight:700;font-size:.95rem">${mgpt}</div>
-        </div>
-      </div>
-      <div style="padding:.6rem 1.25rem;background:rgba(255,255,255,.02);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.08em">
-        🔒 PARIS IRRÉVOCABLES — SAISON 2026
+      ${betRow('🏎️ Champion F1 2026',  'var(--red)',    f1c,  sb.f1Champ,  sr?.f1Champ,  SEASON_BET_PTS.champ)}
+      ${betRow('🏗️ Écurie F1 2026',    'var(--red)',    f1t,  sb.f1Team,   sr?.f1Team,   SEASON_BET_PTS.team)}
+      ${betRow('🏍️ Champion MotoGP',   'var(--orange)', mgpc, sb.mgpChamp, sr?.mgpChamp, SEASON_BET_PTS.champ)}
+      ${betRow('🏗️ Équipe MotoGP',     'var(--orange)', mgpt, sb.mgpTeam,  sr?.mgpTeam,  SEASON_BET_PTS.team)}
+      <div style="padding:.6rem 1.25rem;background:rgba(255,255,255,.02);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.08em">🔒 PARIS IRRÉVOCABLES — SAISON 2026</span>
+        ${totalSeason>0?`<span style="font-family:'Orbitron';font-size:.85rem;font-weight:700;color:var(--gold)">${totalSeason} pts</span>`:''}
       </div>
     </div>`;
 }
 
-// Override renderMyBets to use viewingProfileUserId
-const _origRenderMyBets = renderMyBets;
 function renderMyBets(){
   const uid = viewingProfileUserId || state.currentUser;
   if(!uid) return;
@@ -2323,18 +2436,33 @@ function renderMyBets(){
     const p=res?calcPts(bet,res):null;
     const badgeCls = race.sport==='f1'?'f1-badge':'mgp-badge';
     const badgeIcon = race.sport==='f1'?'🏎️':'🏍️';
-    return `<div class="mb-card">
-      <div>
-        <div class="mb-race" style="display:flex;align-items:center;gap:.5rem">
-          <span class="sport-badge ${badgeCls}">${badgeIcon} ${race.sport==='f1'?'F1':'MotoGP'}</span>
-          GP ${race.name}
+    const detail = res ? calcPtsDetail(bet,res) : null;
+    const driverName = id => {
+      const d = (race.sport==='f1'?F1_DRIVERS:MOTOGP_RIDERS).find(x=>x.id===id);
+      return d ? d.name.split(' ')[0] : (id||'?');
+    };
+    const chipsHtml = detail ? detail.items.map(it => {
+      const cls = it.ok===true?'ok':it.ok==='partial'?'partial':'miss';
+      const icon = it.ok===true?'✓':it.ok==='partial'?'~':'✗';
+      const ptsStr = it.pts>0?` +${it.pts}pts`:'';
+      return `<span class="mb-chip ${cls}">${icon} ${it.label}${ptsStr}</span>`;
+    }).join('') : '';
+
+    return `<div class="mb-card" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div class="mb-race" style="display:flex;align-items:center;gap:.5rem">
+            <span class="sport-badge ${badgeCls}">${badgeIcon} ${race.sport==='f1'?'F1':'MotoGP'}</span>
+            GP ${race.name}
+          </div>
+          <div class="mb-pred">${driverName(bet.p1)} / ${driverName(bet.p2)} / ${driverName(bet.p3)}${bet.pole?` · Pole: ${driverName(bet.pole)}`:''}${bet.fl?` · FL: ${driverName(bet.fl)}`:''}${race.sprint&&bet.sp1?` · Sprint: ${driverName(bet.sp1)}/${driverName(bet.sp2)}/${driverName(bet.sp3)}`:''}</div>
         </div>
-        <div class="mb-pred">${bet.p1||'?'} / ${bet.p2||'?'} / ${bet.p3||'?'}</div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-shrink:0">
+          <div class="mb-status ${res?'scored':'pending'}">${res?'Résultat connu':'En attente'}</div>
+          ${detail!==null?`<div class="mb-pts">${detail.total} pts</div>`:''}
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:.75rem">
-        <div class="mb-status ${res?'scored':'pending'}">${res?'Scoré':'En attente'}</div>
-        ${p!==null?`<div class="mb-pts">${p} pts</div>`:''}
-      </div>
+      ${chipsHtml?`<div class="mb-breakdown">${chipsHtml}</div>`:''}
     </div>`;
   }).join('') || '<div style="text-align:center;padding:2rem;color:var(--muted)">Aucun pari pour ce filtre.</div>';
 }
@@ -2488,6 +2616,35 @@ setInterval(()=>{
   });
 }, 1000);
 </script>
+<!-- SEASON RESULTS MODAL -->
+<div id="seasonResultsModal" style="display:none;position:fixed;inset:0;z-index:9400;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:1.5rem;width:100%;max-width:420px">
+    <div style="font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;color:var(--gold);margin-bottom:1rem;text-align:center">🏆 Résultats Saison 2026</div>
+    <div style="display:grid;gap:.75rem">
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">🏎️ Champion F1 2026</div>
+        <select id="sr-f1-champ" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Rajdhani;font-size:.9rem;padding:.5rem .75rem"></select>
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">🏗️ Écurie championne F1</div>
+        <select id="sr-f1-team" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Rajdhani;font-size:.9rem;padding:.5rem .75rem"></select>
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">🏍️ Champion MotoGP 2026</div>
+        <select id="sr-mgp-champ" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Rajdhani;font-size:.9rem;padding:.5rem .75rem"></select>
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">🏗️ Équipe championne MotoGP</div>
+        <select id="sr-mgp-team" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Rajdhani;font-size:.9rem;padding:.5rem .75rem"></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:1.25rem">
+      <button onclick="closeSeasonResultsModal()" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:.7rem;cursor:pointer;font-family:Rajdhani;font-size:.9rem">Annuler</button>
+      <button onclick="saveSeasonResults()" style="flex:2;background:var(--gold);border:none;color:#111;border-radius:8px;padding:.7rem;cursor:pointer;font-family:Rajdhani;font-size:.95rem;font-weight:700">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADMIN MODAL -->
 <div id="adminModal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:1rem">
   <div style="background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:2rem;width:100%;max-width:320px;text-align:center">
