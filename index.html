@@ -212,14 +212,107 @@
   ::-webkit-scrollbar-track { background: var(--carbon); }
   ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius:3px; }
 
-  @media(max-width:600px) {
-    .podium-grid { grid-template-columns:1fr; }
-    .rt-header, .rt-row { grid-template-columns:30px 1fr auto; }
-    .rt-prediction { display:none; }
-    nav button { padding:.4rem .7rem; font-size:.75rem; }
-    .cd-num { font-size:1.4rem; }
-    .hero h1 { font-size:2rem; }
-    header { padding: 0 1rem; }
+  /* ===== BOTTOM NAV MOBILE ===== */
+  .bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(17,17,18,0.97); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom));
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .bn-btn {
+    display: flex; flex-direction: column; align-items: center; gap: .25rem;
+    background: none; border: none; color: var(--muted);
+    font-family: 'Rajdhani', sans-serif; font-size: .65rem; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: .4rem .5rem; cursor: pointer; transition: color .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bn-btn .bn-icon { font-size: 1.3rem; line-height: 1; }
+  .bn-btn.active { color: var(--red); }
+
+  @media (max-width: 700px) {
+    /* Hide top nav, show bottom nav */
+    header nav { display: none; }
+    .bottom-nav { display: grid; }
+
+    /* Page padding — add bottom space for nav bar */
+    .page { padding: 1rem 1rem calc(80px + 1rem); }
+
+    /* Hero */
+    .hero { padding: 2rem 1rem 1.5rem; }
+    .hero h1 { font-size: 2rem; }
+    .hero p { font-size: 1rem; }
+    .hero-eyebrow { font-size: .65rem; letter-spacing: .2em; }
+    .cta-group { flex-direction: column; }
+    .cta-group .btn-primary, .cta-group .btn-secondary { width: 100%; text-align: center; }
+
+    /* Header */
+    header { padding: 0 1rem; height: 56px; }
+    .logo { font-size: 1.1rem; }
+    .points-badge { display: none; }
+
+    /* Next race strip */
+    .next-race-strip { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.2rem; margin-bottom: 2rem; }
+    .countdown { gap: 1rem; }
+    .cd-num { font-size: 1.6rem; }
+    .next-race-strip .btn-primary { width: 100%; text-align: center; }
+
+    /* Stats */
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: .75rem; margin-bottom: 2rem; }
+    .stat-num { font-size: 1.5rem; }
+
+    /* Race grid — 1 column */
+    .races-grid { grid-template-columns: 1fr; gap: .75rem; }
+
+    /* Leaderboard */
+    .lb-row { padding: .85rem 1rem; gap: .75rem; }
+    .lb-name { font-size: .95rem; }
+    .lb-points { font-size: 1rem; }
+
+    /* Results table */
+    .rt-header, .rt-row { grid-template-columns: 28px 1fr auto; gap: .5rem; padding: .75rem .85rem; font-size: .8rem; }
+    .rt-prediction, .rt-match { display: none; }
+
+    /* Profile */
+    .profile-header { flex-direction: column; text-align: center; padding: 1.25rem; gap: 1rem; }
+    .profile-stats { justify-content: center; gap: 1.5rem; }
+    .profile-info h2 { font-size: 1.1rem; }
+
+    /* Modal */
+    .modal { padding: 1.25rem; border-radius: 16px 16px 0 0; max-height: 92vh; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .podium-grid { gap: .5rem; }
+    .podium-slot { padding: .75rem .5rem; }
+    .podium-pos { font-size: 1.2rem; }
+    .extra-bet-row { flex-direction: column; align-items: flex-start; gap: .5rem; }
+    .extra-bet-row select { width: 100%; min-width: unset; }
+    .modal-footer { flex-direction: column; }
+    .modal-footer .btn-secondary { order: 2; }
+    .modal-footer .btn-primary { order: 1; }
+
+    /* User grid */
+    .user-select-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* Others bets */
+    .oba-pred { font-size: .68rem; }
+
+    /* Sync indicator — move up above bottom nav */
+    #sync-indicator { bottom: calc(65px + env(safe-area-inset-bottom)); }
+
+    /* Toast */
+    #toast { bottom: calc(80px + .5rem); right: 1rem; left: 1rem; max-width: unset; font-size: .85rem; }
+
+    /* Section header */
+    .section-title { font-size: .85rem; }
+  }
+
+  @media (max-width: 380px) {
+    .hero h1 { font-size: 1.7rem; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .cd-num { font-size: 1.3rem; }
+    .cd-label { font-size: .55rem; }
   }
 </style>
 </head>
@@ -251,6 +344,22 @@
 </header>
 
 <div id="toast"></div>
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bn-btn active" onclick="showPage('home')" id="bn-home">
+    <span class="bn-icon">🏠</span>Accueil
+  </button>
+  <button class="bn-btn" onclick="showPage('races')" id="bn-races">
+    <span class="bn-icon">🏎️</span>Courses
+  </button>
+  <button class="bn-btn" onclick="showPage('leaderboard')" id="bn-leaderboard">
+    <span class="bn-icon">🏆</span>Classement
+  </button>
+  <button class="bn-btn" onclick="showPage('profile')" id="bn-profile">
+    <span class="bn-icon">👤</span>Profil
+  </button>
+</nav>
 
 <!-- HOME -->
 <div class="page active" id="page-home">
@@ -534,6 +643,11 @@ window.showPage = id => {
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('nav button').forEach((b,i)=>{
     b.classList.toggle('active',['home','races','leaderboard','profile'][i]===id);
+  });
+  // Bottom nav sync
+  ['home','races','leaderboard','profile'].forEach(p=>{
+    const btn=document.getElementById('bn-'+p);
+    if(btn) btn.classList.toggle('active',p===id);
   });
   if(id==='home') renderHome();
   if(id==='races') renderRaces();
