@@ -999,23 +999,23 @@ const MOTOGP_RIDERS = [
 // sprint  = GP avec course sprint (booléen)
 const F1_RACES = [
   {id:'f1_r01',sport:'f1',round:1, name:"Australie",          circuit:'Albert Park',                   date:'2026-03-08', quali:'2026-03-07T05:00:00Z'},
-  {id:'f1_r02',sport:'f1',round:2, name:"Chine",              circuit:'Shanghai International',        date:'2026-03-15', quali:'2026-03-14T07:00:00Z',  sprint:true, sprintQuali:'2026-03-13T09:00:00Z'},
+  {id:'f1_r02',sport:'f1',round:2, name:"Chine",              circuit:'Shanghai International',        date:'2026-03-15', quali:'2026-03-14T07:00:00Z',  sprint:true, sprintQuali:'2026-03-13T07:30:00Z'},
   {id:'f1_r03',sport:'f1',round:3, name:"Japon",              circuit:'Suzuka',                        date:'2026-03-29', quali:'2026-03-28T06:00:00Z'},
   {id:'f1_r04',sport:'f1',round:4, name:"Bahreïn",            circuit:'Bahrain International',         date:'2026-04-12', quali:'2026-04-11T13:00:00Z'},
   {id:'f1_r05',sport:'f1',round:5, name:"Arabie Saoudite",    circuit:'Jeddah Corniche',               date:'2026-04-19', quali:'2026-04-18T16:00:00Z'},
-  {id:'f1_r06',sport:'f1',round:6, name:"Miami",              circuit:'Miami International Autodrome', date:'2026-05-03', quali:'2026-05-02T19:30:00Z',  sprint:true, sprintQuali:'2026-05-01T21:00:00Z'},
-  {id:'f1_r07',sport:'f1',round:7, name:"Canada",             circuit:'Gilles Villeneuve',             date:'2026-05-24', quali:'2026-05-23T19:00:00Z',  sprint:true, sprintQuali:'2026-05-22T21:00:00Z'},
+  {id:'f1_r06',sport:'f1',round:6, name:"Miami",              circuit:'Miami International Autodrome', date:'2026-05-03', quali:'2026-05-02T20:00:00Z',  sprint:true, sprintQuali:'2026-05-01T20:30:00Z'},
+  {id:'f1_r07',sport:'f1',round:7, name:"Canada",             circuit:'Gilles Villeneuve',             date:'2026-05-24', quali:'2026-05-23T20:00:00Z',  sprint:true, sprintQuali:'2026-05-22T20:30:00Z'},
   {id:'f1_r08',sport:'f1',round:8, name:"Monaco",             circuit:'Circuit de Monaco',             date:'2026-06-07', quali:'2026-06-06T14:00:00Z'},
   {id:'f1_r09',sport:'f1',round:9, name:"Barcelone-Catalogne",circuit:'Circuit de Barcelone',          date:'2026-06-14', quali:'2026-06-13T13:00:00Z'},
   {id:'f1_r10',sport:'f1',round:10,name:"Autriche",           circuit:'Red Bull Ring',                 date:'2026-06-28', quali:'2026-06-27T13:00:00Z'},
-  {id:'f1_r11',sport:'f1',round:11,name:"Grande-Bretagne",    circuit:'Silverstone',                   date:'2026-07-05', quali:'2026-07-04T14:00:00Z',  sprint:true, sprintQuali:'2026-07-03T16:00:00Z'},
+  {id:'f1_r11',sport:'f1',round:11,name:"Grande-Bretagne",    circuit:'Silverstone',                   date:'2026-07-05', quali:'2026-07-04T16:00:00Z',  sprint:true, sprintQuali:'2026-07-03T16:30:00Z'},
   {id:'f1_r12',sport:'f1',round:12,name:"Belgique",           circuit:'Spa-Francorchamps',             date:'2026-07-19', quali:'2026-07-18T13:00:00Z'},
   {id:'f1_r13',sport:'f1',round:13,name:"Hongrie",            circuit:'Hungaroring',                   date:'2026-07-26', quali:'2026-07-25T13:00:00Z'},
-  {id:'f1_r14',sport:'f1',round:14,name:"Pays-Bas",           circuit:'Zandvoort',                     date:'2026-08-23', quali:'2026-08-22T13:00:00Z',  sprint:true, sprintQuali:'2026-08-21T15:00:00Z'},
+  {id:'f1_r14',sport:'f1',round:14,name:"Pays-Bas",           circuit:'Zandvoort',                     date:'2026-08-23', quali:'2026-08-22T14:00:00Z',  sprint:true, sprintQuali:'2026-08-21T14:30:00Z'},
   {id:'f1_r15',sport:'f1',round:15,name:"Italie",             circuit:'Monza',                         date:'2026-09-06', quali:'2026-09-05T13:00:00Z'},
   {id:'f1_r16',sport:'f1',round:16,name:"Espagne",            circuit:'Circuit Urbain de Madrid',      date:'2026-09-13', quali:'2026-09-12T13:00:00Z'},
   {id:'f1_r17',sport:'f1',round:17,name:"Azerbaïdjan",        circuit:'Baku City Circuit',             date:'2026-09-26', quali:'2026-09-25T11:00:00Z'},
-  {id:'f1_r18',sport:'f1',round:18,name:"Singapour",          circuit:'Marina Bay Street Circuit',     date:'2026-10-11', quali:'2026-10-10T09:00:00Z',  sprint:true, sprintQuali:'2026-10-09T09:00:00Z'},
+  {id:'f1_r18',sport:'f1',round:18,name:"Singapour",          circuit:'Marina Bay Street Circuit',     date:'2026-10-11', quali:'2026-10-10T07:00:00Z',  sprint:true, sprintQuali:'2026-10-09T12:30:00Z'},
   {id:'f1_r19',sport:'f1',round:19,name:"États-Unis",         circuit:'Circuit of the Americas',       date:'2026-10-25', quali:'2026-10-24T21:00:00Z'},
   {id:'f1_r20',sport:'f1',round:20,name:"Mexique",            circuit:'Autodromo Hermanos Rodriguez',  date:'2026-11-01', quali:'2026-10-31T21:00:00Z'},
   {id:'f1_r21',sport:'f1',round:21,name:"São Paulo",          circuit:'Interlagos',                    date:'2026-11-08', quali:'2026-11-07T18:00:00Z'},
@@ -1054,13 +1054,14 @@ const MOTOGP_RACES = [
 const ALL_RACES = [...F1_RACES, ...MOTOGP_RACES];
 
 // ===== DEADLINE HELPERS =====
+// sprintQuali = début des Qualifications Sprint (vendredi) → deadline paris Sprint
+// quali       = début des Qualifications GP (samedi)       → deadline paris Course
 function isBettingClosed(race) {
-  // For sprint weekends, overall betting closes at sprintQuali (earliest deadline)
-  // so both sprint and GP bets must be placed before sprint qualifying
-  if(race.sprint && race.sprintQuali) return new Date() >= new Date(race.sprintQuali);
+  // Overall modal closes at GP qualifying — sprint section locks separately at sprintQuali
   return new Date() >= new Date(race.quali);
 }
 function isSprintBettingClosed(race) {
+  // Sprint votes close at sprintQuali (Qualifications Sprint, vendredi)
   if(!race.sprint || !race.sprintQuali) return true;
   return new Date() >= new Date(race.sprintQuali);
 }
@@ -1337,7 +1338,7 @@ function buildCard(r, uid, sp) {
     if(hasSprint) {
       if(!sprintClosed) {
         var msS = new Date(r.sprintQuali) - new Date();
-        deadlineHtml += '<div class="rc-deadline">⚡ Sprint : ' + new Date(r.sprintQuali).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}) + '</div>';
+        deadlineHtml += '<div class="rc-deadline">⚡ Sprint — clôture : ' + new Date(r.sprintQuali).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}) + '</div>';
         if(msS < 48*3600000) countdownHtml = '<div class="rc-countdown">⚡ ' + fmtCountdownShort(msS) + '</div>';
       }
       if(!gpClosed2) {
@@ -1656,7 +1657,8 @@ window.openBetModal = raceId => {
     sprintSec.style.display = '';
     const spInfo = document.getElementById('sprintDeadlineInfo');
     if(!sprintClosed) {
-      spInfo.textContent = '🔒 Clôture sprint : '+new Date(race.sprintQuali).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'});
+      const fmtSprintQuali = new Date(race.sprintQuali).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'});
+      spInfo.textContent = '🔒 Clôture avant Qualifs Sprint : '+fmtSprintQuali;
     } else {
       spInfo.textContent = '🔒 Paris sprint clos';
     }
