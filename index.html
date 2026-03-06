@@ -662,6 +662,58 @@
       bottom: calc(65px + env(safe-area-inset-bottom) + 1rem);
     }
   }
+
+  /* ── AVATAR LIGHTBOX ── */
+  #avatarLightbox {
+    position:fixed; inset:0; z-index:9800;
+    background:rgba(0,0,0,0); backdrop-filter:blur(0px);
+    display:flex; align-items:center; justify-content:center;
+    cursor:zoom-out;
+    transition:background .25s ease, backdrop-filter .25s ease;
+    pointer-events:none;
+  }
+  #avatarLightbox.open {
+    background:rgba(0,0,0,.82); backdrop-filter:blur(14px);
+    pointer-events:all;
+  }
+  #avatarLightbox .lb-img-wrap {
+    position:relative;
+    transform:scale(.6); opacity:0;
+    transition:transform .28s cubic-bezier(.34,1.56,.64,1), opacity .22s ease;
+  }
+  #avatarLightbox.open .lb-img-wrap {
+    transform:scale(1); opacity:1;
+  }
+  #avatarLightbox .lb-img-wrap img,
+  #avatarLightbox .lb-img-wrap .lb-letter {
+    width:260px; height:260px; border-radius:50%;
+    object-fit:cover; display:block;
+    border:3px solid rgba(255,255,255,.18);
+    box-shadow:0 24px 64px rgba(0,0,0,.7);
+  }
+  #avatarLightbox .lb-img-wrap .lb-letter {
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface3);
+    font-family:'Orbitron',monospace; font-weight:700;
+    font-size:6rem; color:white;
+  }
+  #avatarLightbox .lb-name {
+    text-align:center; margin-top:1rem;
+    font-family:'Orbitron',monospace; font-size:.9rem;
+    font-weight:700; color:white; letter-spacing:.1em;
+    opacity:0; transform:translateY(8px);
+    transition:opacity .25s .1s ease, transform .25s .1s ease;
+  }
+  #avatarLightbox.open .lb-name { opacity:1; transform:translateY(0); }
+  #avatarLightbox .lb-close {
+    position:absolute; top:-10px; right:-10px;
+    width:32px; height:32px; border-radius:50%;
+    background:rgba(255,255,255,.15); border:none;
+    color:white; font-size:1rem; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s;
+  }
+  #avatarLightbox .lb-close:hover { background:rgba(255,255,255,.3); }
 </style>
 </head>
 <body>
@@ -2467,8 +2519,18 @@ function renderProfile(){
   // Show/hide upload overlay: only on own profile
   const av = document.getElementById('profileAvatar');
   const overlayEl = document.getElementById('profileAvatarOverlay');
-  if(av) av.style.cursor = isOwnProfile ? 'pointer' : 'default';
+  if(av) av.style.cursor = 'pointer';
   if(overlayEl) overlayEl.style.display = isOwnProfile ? '' : 'none';
+  // Set onclick: own profile → upload (or lightbox if has photo), other → lightbox
+  if(av){
+    av.onclick = null;
+    if(isOwnProfile){
+      av.onclick = () => triggerAvatarUpload();
+    } else {
+      const _u = state.users.find(u=>u.id===uid);
+      av.onclick = () => openAvatarLightbox(_u?.photoURL, _u?.name);
+    }
+  }
   // Show/hide logout button
   const logoutBtn = document.getElementById('logoutBtn');
   if(logoutBtn) logoutBtn.style.display = isOwnProfile ? '' : 'none';
@@ -2503,6 +2565,9 @@ function renderProfile(){
         av.insertBefore(img, av.firstChild);
       }
       img.src = user.photoURL;
+      // Click on photo → lightbox (works for both own and other profiles)
+      img.onclick = (e) => { e.stopPropagation(); openAvatarLightbox(user.photoURL, user.name); };
+      img.style.cursor = 'zoom-in';
     } else {
       if(letter){ letter.style.display=''; letter.textContent = user.name[0].toUpperCase(); }
       const img = av.querySelector('img.profile-photo');
@@ -2961,6 +3026,26 @@ setInterval(()=>{
     if(ms<=0) { el.style.display='none'; refresh(); }
   });
 }, 1000);
+
+// ===== AVATAR LIGHTBOX =====
+window.openAvatarLightbox = (photoURL, name) => {
+  const box = document.getElementById('avatarLightbox');
+  const content = document.getElementById('lbContent');
+  const lbName = document.getElementById('lbName');
+  if(photoURL){
+    content.innerHTML = `<img src="${photoURL}" alt="${name}">`;
+  } else {
+    content.innerHTML = `<div class="lb-letter">${(name||'?')[0].toUpperCase()}</div>`;
+  }
+  lbName.textContent = name || '';
+  box.classList.add('open');
+};
+window.closeAvatarLightbox = () => {
+  document.getElementById('avatarLightbox').classList.remove('open');
+};
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') closeAvatarLightbox();
+});
 </script>
 <!-- SEASON RESULTS MODAL -->
 <div id="seasonResultsModal" style="display:none;position:fixed;inset:0;z-index:9400;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:1rem">
@@ -3019,5 +3104,14 @@ setInterval(()=>{
   </div>
 </div>
 
+
+<!-- AVATAR LIGHTBOX -->
+<div id="avatarLightbox" onclick="closeAvatarLightbox()">
+  <div class="lb-img-wrap" onclick="event.stopPropagation()">
+    <div id="lbContent"></div>
+    <button class="lb-close" onclick="closeAvatarLightbox()">✕</button>
+  </div>
+  <div class="lb-name" id="lbName"></div>
+</div>
 </body>
 </html>
