@@ -464,11 +464,26 @@
   body.motogp #chatBtn { background:var(--orange);box-shadow:0 4px 20px rgba(255,107,0,.4); }
   #chatBtn:hover { transform:scale(1.1); }
   #chatBtn .chat-badge {
-    position:absolute;top:-4px;right:-4px;background:#00D450;
-    width:18px;height:18px;border-radius:50%;font-size:.65rem;font-weight:700;
-    display:none;align-items:center;justify-content:center;border:2px solid var(--carbon);
+    position:absolute;top:-5px;right:-5px;
+    background:var(--red);
+    min-width:20px;height:20px;
+    border-radius:10px;
+    font-size:.65rem;font-weight:700;
+    display:none;align-items:center;justify-content:center;
+    border:2px solid var(--carbon);
+    padding:0 4px;
+    color:white;
+    box-shadow:0 0 0 0 rgba(232,0,45,.6);
   }
-  #chatBtn .chat-badge.show { display:flex; }
+  #chatBtn .chat-badge.show {
+    display:flex;
+    animation: badgePulse 1.8s ease-out infinite;
+  }
+  @keyframes badgePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(232,0,45,.55); }
+    60%  { box-shadow: 0 0 0 7px rgba(232,0,45,0); }
+    100% { box-shadow: 0 0 0 0 rgba(232,0,45,0); }
+  }
   @media(max-width:700px){
     #chatBtn { bottom:calc(65px + env(safe-area-inset-bottom) + .5rem); right:1rem; width:46px;height:46px;font-size:1.2rem; }
   }
@@ -530,6 +545,51 @@
   .chat-send:hover { filter:brightness(1.15); }
   .chat-send:disabled { opacity:.4;cursor:default; }
   .chat-login-msg { text-align:center;color:var(--muted);font-size:.85rem;padding:1rem; }
+
+  /* ── CHAT NOTIFICATION POPUP ── */
+  #chatNotif {
+    position: fixed;
+    bottom: 6rem; right: 1.5rem;
+    z-index: 598;
+    width: 300px;
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,.12);
+    border-left: 3px solid var(--red);
+    border-radius: 14px;
+    padding: .85rem 1rem;
+    display: flex; align-items: center; gap: .75rem;
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    cursor: pointer;
+    transform: translateX(calc(100% + 2rem));
+    opacity: 0;
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+    pointer-events: none;
+  }
+  body.motogp #chatNotif { border-left-color: var(--orange); }
+  #chatNotif.show {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+  .cn-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface3);
+    border: 1px solid rgba(255,255,255,.1);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace; font-weight: 700;
+    font-size: .8rem; color: white; flex-shrink: 0;
+  }
+  .cn-body { flex: 1; min-width: 0; }
+  .cn-name { font-size: .72rem; font-weight: 700; color: var(--muted); font-family: 'Share Tech Mono', monospace; margin-bottom: .15rem; }
+  .cn-text { font-size: .88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cn-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem; flex-shrink: 0; padding: .2rem; transition: color .2s; }
+  .cn-dismiss:hover { color: white; }
+  @media(max-width:700px){
+    #chatNotif {
+      left: .75rem; right: .75rem; width: auto;
+      bottom: calc(65px + env(safe-area-inset-bottom) + 1rem);
+    }
+  }
 </style>
 </head>
 <body>
@@ -632,6 +692,16 @@
   💬
   <div class="chat-badge" id="chatBadge"></div>
 </button>
+
+<!-- Chat notification popup -->
+<div id="chatNotif" onclick="openChatFromNotif()">
+  <div class="cn-avatar" id="cnAvatar">?</div>
+  <div class="cn-body">
+    <div class="cn-name" id="cnName">—</div>
+    <div class="cn-text" id="cnText">—</div>
+  </div>
+  <button class="cn-dismiss" onclick="dismissChatNotif(event)" title="Fermer">✕</button>
+</div>
 <div id="chatPanel">
   <div class="chat-header">
     <div>
@@ -2508,9 +2578,36 @@ window.toggleChat = () => {
     chatUnread = 0;
     document.getElementById('chatBadge').classList.remove('show');
     document.getElementById('chatBadge').textContent='';
+    dismissChatNotif();
     scrollChatToBottom();
     document.getElementById('chatInput').focus();
   }
+};
+
+let chatNotifTimer = null;
+
+function showChatNotif(msg) {
+  const user = state.users.find(u => u.id === msg.userId);
+  const name = user?.name || msg.userName || '?';
+  document.getElementById('cnAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('cnName').textContent = name;
+  document.getElementById('cnText').textContent = msg.text;
+  const notif = document.getElementById('chatNotif');
+  notif.classList.add('show');
+  // Auto-dismiss after 5s
+  if(chatNotifTimer) clearTimeout(chatNotifTimer);
+  chatNotifTimer = setTimeout(() => dismissChatNotif(), 5000);
+}
+
+window.dismissChatNotif = (e) => {
+  if(e) e.stopPropagation();
+  document.getElementById('chatNotif').classList.remove('show');
+  if(chatNotifTimer) clearTimeout(chatNotifTimer);
+};
+
+window.openChatFromNotif = () => {
+  dismissChatNotif();
+  if(!chatOpen) window.toggleChat();
 };
 
 function scrollChatToBottom(){
@@ -2570,7 +2667,7 @@ onSnapshot(
     const prev = chatMessages.length;
     chatMessages = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderChatMessages();
-    // Show unread badge if new messages and chat is closed
+    // Show unread badge + notification popup if new messages and chat is closed
     if(chatMessages.length > prev && !chatOpen && prev > 0){
       const newMsg = chatMessages[chatMessages.length-1];
       if(newMsg.userId !== state.currentUser){
@@ -2578,6 +2675,8 @@ onSnapshot(
         const badge = document.getElementById('chatBadge');
         badge.textContent = chatUnread > 9 ? '9+' : chatUnread;
         badge.classList.add('show');
+        // Show notification popup
+        showChatNotif(newMsg);
       }
     }
     // Update online count label
