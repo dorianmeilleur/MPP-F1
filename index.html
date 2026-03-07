@@ -941,6 +941,7 @@
     width:24px; height:24px; border-radius:50%; object-fit:cover; flex-shrink:0;
     background:var(--surface3);
   }
+
 </style>
 </head>
 <body>
@@ -1591,6 +1592,7 @@ onSnapshot(collection(db,'sessionResults'), snap => {
   snap.docs.forEach(d=>{ state.sessionResults[d.id]=d.data(); });
 }, e=>{ console.warn('sessionResults snap error',e); });
 
+
 function refresh(){
   const p = document.querySelector('.page.active')?.id?.replace('page-','');
   if(p==='home') renderHome();
@@ -2148,6 +2150,7 @@ function fillSelects(raceId, ...ids){
 
 // ===== BET MODAL =====
 window.openBetModal = raceId => {
+  if(isAdminSession){ openResultModalFor(raceId); return; }
   if(!state.currentUser){
     toast('🔐 Connectez-vous pour parier !', false);
     renderLoginUserGrid();
@@ -3257,16 +3260,6 @@ window.viewProfile = uid => {
   document.getElementById(id).addEventListener('click',e=>{ if(e.target.id===id) document.getElementById(id).classList.remove('open'); });
 });
 
-// Close sessionModal on outside click
-document.getElementById('sessionModal').addEventListener('click', e=>{
-  if(e.target.id==='sessionModal') closeSessionModal();
-});
-
-// Close seasonResultsModal on outside click
-document.getElementById('seasonResultsModal').addEventListener('click', e=>{
-  if(e.target.id==='seasonResultsModal') document.getElementById('seasonResultsModal').style.display='none';
-});
-
 // Apply saved sport on load
 if(state.currentSport==='motogp') switchSport('motogp');
 
@@ -3422,7 +3415,7 @@ function driverPhotoHtml(id, drivers, size=28) {
 // Global active dropdown tracker
 let _activePdmClose = null;
 function closePdmDropdown() { if(_activePdmClose) { _activePdmClose(); _activePdmClose = null; } }
-document.addEventListener('mousedown', e => { if(!e.target.closest('.pdm-dropdown') && !e.target.closest('.driver-custom-select')) closePdmDropdown(); });
+document.addEventListener('click', e => { if(!e.target.closest('.pdm-dropdown') && !e.target.closest('.driver-custom-select')) closePdmDropdown(); });
 document.addEventListener('keydown', e => { if(e.key==='Escape') closePdmDropdown(); });
 
 function initPhotoSelect(selectEl, driversInit, placeholderText='— Choisir —') {
@@ -3507,59 +3500,27 @@ function initPhotoSelect(selectEl, driversInit, placeholderText='— Choisir —
     updateDisplay(initD||null);
 
   } else {
-    // ── BONUS selects: custom dropdown (same mechanism as podium) ──
-    selectEl.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;';
-    container.appendChild(selectEl);
-
-    const trigger = document.createElement('div');
-    trigger.className = 'driver-custom-select';
+    // ── BONUS selects: keep native select with inline photo overlay ──
+    const overlay = document.createElement('div');
+    overlay.className = 'driver-custom-select';
     const photoWrap = document.createElement('span');
     photoWrap.className = 'dcs-inline-photo-wrap';
     photoWrap.innerHTML = '<span class="dcs-photo-placeholder">?</span>';
     const nameEl = document.createElement('span'); nameEl.className = 'dcs-name'; nameEl.textContent = placeholderText;
     const arrowEl = document.createElement('span'); arrowEl.className = 'dcs-arrow'; arrowEl.textContent = '▾';
-    trigger.appendChild(photoWrap); trigger.appendChild(nameEl); trigger.appendChild(arrowEl);
-    container.appendChild(trigger);
+    overlay.appendChild(photoWrap); overlay.appendChild(nameEl); overlay.appendChild(arrowEl);
+    overlay.appendChild(selectEl);
+    container.appendChild(overlay);
 
-    function updateDisplay(d) {
+    function update() {
+      const d = _drivers.find(x=>x.id===selectEl.value);
       if(d && d.photo) { photoWrap.innerHTML = `<img class="dcs-photo" src="${d.photo}" alt="${d.name[0]}">`;
       } else { photoWrap.innerHTML = `<span class="dcs-photo-placeholder">${d ? d.name[0].toUpperCase() : '?'}</span>`; }
       nameEl.textContent = d ? d.name : placeholderText;
-      trigger.classList.toggle('open', false);
     }
-
-    function openDropdown() {
-      closePdmDropdown();
-      const dd = document.createElement('div');
-      dd.className = 'pdm-dropdown';
-      const rect = trigger.getBoundingClientRect();
-      dd.style.cssText = `top:${rect.bottom+4}px;left:${rect.left}px;width:${Math.max(rect.width,200)}px;`;
-      const none = document.createElement('div');
-      none.className = 'pdm-option' + (selectEl.value==='' ? ' selected' : '');
-      none.innerHTML = '<span class="pdm-placeholder">—</span><span>— Choisir —</span>';
-      none.addEventListener('click', () => { selectEl.value=''; selectEl.dispatchEvent(new Event('change')); updateDisplay(null); closePdmDropdown(); });
-      dd.appendChild(none);
-      _drivers.forEach(d => {
-        const opt = document.createElement('div');
-        opt.className = 'pdm-option' + (selectEl.value===d.id ? ' selected' : '');
-        const imgHtml = d.photo ? `<img src="${d.photo}" alt="${d.name[0]}">` : `<span class="pdm-placeholder">${d.name[0]}</span>`;
-        opt.innerHTML = imgHtml + `<span>${d.name}</span>`;
-        opt.addEventListener('click', () => { selectEl.value=d.id; selectEl.dispatchEvent(new Event('change')); updateDisplay(d); closePdmDropdown(); });
-        dd.appendChild(opt);
-      });
-      document.body.appendChild(dd);
-      trigger.classList.add('open');
-      _activePdmClose = () => { dd.remove(); trigger.classList.remove('open'); };
-    }
-
-    trigger.addEventListener('click', e => { e.stopPropagation(); openDropdown(); });
-    selectEl.addEventListener('change', () => {
-      const d = _drivers.find(x=>x.id===selectEl.value);
-      updateDisplay(d||null);
-    });
-    selectEl._photoSelectUpdate = (newDrivers) => { if(newDrivers) _drivers = newDrivers; const d = _drivers.find(x=>x.id===selectEl.value); updateDisplay(d||null); };
-    const initD = _drivers.find(x=>x.id===selectEl.value);
-    updateDisplay(initD||null);
+    selectEl.addEventListener('change', update);
+    selectEl._photoSelectUpdate = (newDrivers) => { if(newDrivers) _drivers = newDrivers; update(); };
+    update();
   }
 }
 
@@ -3696,6 +3657,8 @@ window.openSessionModal = (raceId) => {
   _origOpenSessionModal(raceId);
 };
 
+
+
 </script>
 <!-- SEASON RESULTS MODAL -->
 <div id="seasonResultsModal" style="display:none;position:fixed;inset:0;z-index:9400;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:1rem">
@@ -3778,5 +3741,6 @@ window.openSessionModal = (raceId) => {
     <div class="sm-body" id="smBody"></div>
   </div>
 </div>
+
 </body>
 </html>
