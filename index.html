@@ -3749,27 +3749,62 @@ function initPhotoSelect(selectEl, driversInit, placeholderText='— Choisir —
     updateDisplay(initD||null);
 
   } else {
-    // ── BONUS selects: keep native select with inline photo overlay ──
-    const overlay = document.createElement('div');
-    overlay.className = 'driver-custom-select';
+    // ── BONUS selects (pole, FL…): custom dropdown like podium ──
+    selectEl.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;';
+    container.appendChild(selectEl);
+
+    const trigger = document.createElement('div');
+    trigger.className = 'driver-custom-select';
     const photoWrap = document.createElement('span');
     photoWrap.className = 'dcs-inline-photo-wrap';
     photoWrap.innerHTML = '<span class="dcs-photo-placeholder">?</span>';
     const nameEl = document.createElement('span'); nameEl.className = 'dcs-name'; nameEl.textContent = placeholderText;
     const arrowEl = document.createElement('span'); arrowEl.className = 'dcs-arrow'; arrowEl.textContent = '▾';
-    overlay.appendChild(photoWrap); overlay.appendChild(nameEl); overlay.appendChild(arrowEl);
-    overlay.appendChild(selectEl);
-    container.appendChild(overlay);
+    trigger.appendChild(photoWrap); trigger.appendChild(nameEl); trigger.appendChild(arrowEl);
+    container.appendChild(trigger);
 
-    function update() {
-      const d = _drivers.find(x=>x.id===selectEl.value);
+    function updateDisplay(d) {
       if(d && d.photo) { photoWrap.innerHTML = `<img class="dcs-photo" src="${d.photo}" alt="${d.name[0]}">`;
       } else { photoWrap.innerHTML = `<span class="dcs-photo-placeholder">${d ? d.name[0].toUpperCase() : '?'}</span>`; }
       nameEl.textContent = d ? d.name : placeholderText;
     }
-    selectEl.addEventListener('change', update);
-    selectEl._photoSelectUpdate = (newDrivers) => { if(newDrivers) _drivers = newDrivers; update(); };
-    update();
+
+    function openDropdown() {
+      if(selectEl.disabled) return;
+      closePdmDropdown();
+      const dd = document.createElement('div');
+      dd.className = 'pdm-dropdown';
+      const rect = trigger.getBoundingClientRect();
+      dd.style.cssText = `top:${rect.bottom+4}px;left:${rect.left}px;width:${Math.max(rect.width,200)}px;`;
+      const none = document.createElement('div');
+      none.className = 'pdm-option' + (selectEl.value==='' ? ' selected' : '');
+      none.innerHTML = '<span class="pdm-placeholder">—</span><span>— Choisir —</span>';
+      none.addEventListener('click', () => { selectEl.value=''; selectEl.dispatchEvent(new Event('change')); updateDisplay(null); closePdmDropdown(); });
+      dd.appendChild(none);
+      _drivers.forEach(d => {
+        const opt = document.createElement('div');
+        opt.className = 'pdm-option' + (selectEl.value===d.id ? ' selected' : '');
+        const imgHtml = d.photo ? `<img src="${d.photo}" alt="${d.name[0]}">` : `<span class="pdm-placeholder">${d.name[0]}</span>`;
+        opt.innerHTML = imgHtml + `<span>${d.name}</span>`;
+        opt.addEventListener('click', () => { selectEl.value=d.id; selectEl.dispatchEvent(new Event('change')); updateDisplay(d); closePdmDropdown(); });
+        dd.appendChild(opt);
+      });
+      document.body.appendChild(dd);
+      trigger.classList.add('open');
+      _activePdmClose = () => { dd.remove(); trigger.classList.remove('open'); };
+    }
+
+    trigger.addEventListener('click', e => { e.stopPropagation(); openDropdown(); });
+    selectEl.addEventListener('change', () => {
+      const d = _drivers.find(x=>x.id===selectEl.value);
+      updateDisplay(d||null);
+    });
+    selectEl._photoSelectUpdate = (newDrivers) => {
+      if(newDrivers) _drivers = newDrivers;
+      const d = _drivers.find(x=>x.id===selectEl.value);
+      updateDisplay(d||null);
+    };
+    updateDisplay(_drivers.find(x=>x.id===selectEl.value)||null);
   }
 }
 
