@@ -165,14 +165,14 @@
   .rc-reminder-btn {
     display:inline-flex; align-items:center; gap:.3rem;
     margin-top:.75rem; margin-left:.5rem;
-    background:none; border:1px solid var(--border);
-    border-radius:8px; color:var(--muted); cursor:pointer;
+    background:rgba(245,166,35,.05); border:1px solid rgba(245,166,35,.25);
+    border-radius:8px; color:rgba(245,166,35,.7); cursor:pointer;
     font-size:.75rem; font-family:'Share Tech Mono',monospace;
     letter-spacing:.06em; padding:.35rem .7rem;
     transition:all .15s;
   }
-  .rc-reminder-btn:hover { border-color:rgba(245,166,35,.5); color:var(--gold); }
-  .rc-reminder-btn.active { border-color:rgba(245,166,35,.5); color:var(--gold); background:rgba(245,166,35,.08); }
+  .rc-reminder-btn:hover { border-color:rgba(245,166,35,.6); color:var(--gold); background:rgba(245,166,35,.1); }
+  .rc-reminder-btn.active { border-color:rgba(245,166,35,.6); color:var(--gold); background:rgba(245,166,35,.12); }
 
   /* Reminder Modal */
   #reminderModal {
@@ -1397,6 +1397,12 @@
   </div>
   <div id="seasonBetsCard" style="margin-bottom:1.5rem"></div>
 
+  <div class="section-header">
+    <div class="section-title">Mes Paris</div>
+    <div class="section-sub" id="profileBetCount"></div>
+  </div>
+  <div class="my-bets-list" id="myBetsList"></div>
+
   <!-- BADGES SECTION -->
   <div class="section-header">
     <div class="section-title">🎖️ Succès & Badges</div>
@@ -1411,18 +1417,11 @@
       <button class="bft-btn active" onclick="filterBadges('all',this)">Tous</button>
       <button class="bft-btn" onclick="filterBadges('unlocked',this)">✅ Débloqués</button>
       <button class="bft-btn" onclick="filterBadges('locked',this)">🔒 À débloquer</button>
-      <button class="bft-btn" onclick="filterBadges('common',this)">Commun</button>
       <button class="bft-btn" onclick="filterBadges('rare',this)">Rare</button>
       <button class="bft-btn" onclick="filterBadges('legendary',this)">Légendaire</button>
     </div>
     <div class="badges-grid" id="badgesGrid"></div>
   </div>
-
-  <div class="section-header">
-    <div class="section-title">Mes Paris</div>
-    <div class="section-sub" id="profileBetCount"></div>
-  </div>
-  <div class="my-bets-list" id="myBetsList"></div>
 </div>
 
 <!-- MODAL: BET -->
@@ -2103,7 +2102,7 @@ function buildCard(r, uid, sp) {
     + previewHtml
     + '<div style="display:flex;flex-wrap:wrap">'
     + '<button class="rc-sessions-btn" onclick="event.stopPropagation();openSessionModal(\'' + r.id + '\')" title="Résultats des sessions">📋 Sessions</button>'
-    + (!hasRes && !closed ? '<button class="rc-reminder-btn" id="remBtn_' + r.id + '"' + (getReminderActive(r.id) ? ' class="rc-reminder-btn active"' : '') + ' onclick="event.stopPropagation();openReminderModal(\'' + r.id + '\')" title="Rappel avant clôture">🔔 Rappel</button>' : '')
+    + (!hasRes && !closed ? '<button class="rc-reminder-btn' + (getReminderActive(r.id) ? ' active' : '') + '" id="remBtn_' + r.id + '" onclick="event.stopPropagation();openReminderModal(\'' + r.id + '\')" title="Rappel avant clôture">🔔 Rappel</button>' : '')
     + '</div>'
     + '</div>';
 }
