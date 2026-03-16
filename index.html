@@ -378,7 +378,12 @@
   .stat-label { font-size: .8rem; color: var(--muted); margin-top: .4rem; }
 
   .profile-header { display: flex; align-items: center; gap: 2rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
-  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #444; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 1.8rem; font-weight: 700; color: white; flex-shrink:0; position:relative; overflow:hidden; cursor:pointer; }
+  .profile-avatars { display:flex; gap:1.2rem; align-items:flex-start; flex-shrink:0; }
+  .profile-avatar-wrap { display:flex; flex-direction:column; align-items:center; gap:.35rem; }
+  .profile-avatar-label { font-family:'Share Tech Mono',monospace; font-size:.6rem; letter-spacing:.1em; color:var(--muted); }
+  .profile-avatar-label.f1 { color:rgba(220,80,80,.8); }
+  .profile-avatar-label.mgp { color:rgba(80,160,220,.8); }
+  .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #444; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 1.6rem; font-weight: 700; color: white; flex-shrink:0; position:relative; overflow:hidden; cursor:pointer; }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
   .profile-avatar .av-upload-overlay {
     position:absolute; inset:0; background:rgba(0,0,0,.55); border-radius:50%;
@@ -1370,14 +1375,30 @@
     👁️ Vous consultez le profil de <strong id="profileViewingName"></strong> — <button onclick="showMyProfile()" style="background:none;border:none;color:var(--gold);cursor:pointer;text-decoration:underline;font-size:.85rem">Voir mon profil</button>
   </div>
   <div class="profile-header">
-    <div class="profile-avatar" id="profileAvatar" onclick="triggerAvatarUpload()" title="Changer la photo de profil">
-      <span id="profileAvatarLetter">?</span>
-      <div class="av-upload-overlay" id="profileAvatarOverlay">
-        <span class="av-icon">📷</span>
-        <span class="av-text" id="avatarOverlayText">CHANGER</span>
+    <div class="profile-avatars">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatarF1" onclick="triggerAvatarUpload('f1')" title="Changer la photo F1">
+          <span id="profileAvatarLetterF1">?</span>
+          <div class="av-upload-overlay">
+            <span class="av-icon">📷</span>
+            <span class="av-text">CHANGER</span>
+          </div>
+        </div>
+        <span class="profile-avatar-label f1">🏎️ F1</span>
+      </div>
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar" id="profileAvatarMGP" onclick="triggerAvatarUpload('motogp')" title="Changer la photo MotoGP">
+          <span id="profileAvatarLetterMGP">?</span>
+          <div class="av-upload-overlay">
+            <span class="av-icon">📷</span>
+            <span class="av-text">CHANGER</span>
+          </div>
+        </div>
+        <span class="profile-avatar-label mgp">🏍️ MotoGP</span>
       </div>
     </div>
-    <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+    <input type="file" id="avatarFileInputF1" accept="image/*" style="display:none" onchange="handleAvatarUpload(event,'f1')">
+    <input type="file" id="avatarFileInputMGP" accept="image/*" style="display:none" onchange="handleAvatarUpload(event,'motogp')">
     <div class="profile-info">
       <h2 id="profileName">Sélectionnez un profil</h2>
       <p id="profileRank">—</p>
@@ -2012,9 +2033,11 @@ function renderHome(){
     :'<div style="text-align:center;padding:2rem;color:var(--muted)">Aucun parieur. <button class="btn-primary" style="margin-top:1rem" onclick="openUserModal()">Créer un profil</button></div>';
 }
 
-function userAvatarHtml(u, size=28){
-  if(u.photoURL){
-    return `<img src="${u.photoURL}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;flex-shrink:0">`;
+function userAvatarHtml(u, size=28, sport){
+  const sp = sport || state.currentSport || 'f1';
+  const photo = (sp==='f1' ? u.photoF1 : u.photoMotoGP) || u.photoURL;
+  if(photo){
+    return `<img src="${photo}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;flex-shrink:0">`;
   }
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#444;display:flex;align-items:center;justify-content:center;font-family:Orbitron;font-size:${Math.round(size*0.4)}px;font-weight:700;color:white;flex-shrink:0">${u.name[0].toUpperCase()}</div>`;
 }
@@ -2269,8 +2292,10 @@ function updateHeader(){
   const uid=state.currentUser;
   const user=state.users.find(u=>u.id===uid);
   const av=document.getElementById('headerAvatar');
-  if(user && user.photoURL){
-    av.innerHTML=`<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  const sp = state.currentSport || 'f1';
+  const photo = user ? ((sp==='f1' ? user.photoF1 : user.photoMotoGP) || user.photoURL) : null;
+  if(photo){
+    av.innerHTML=`<img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
   } else {
     av.textContent=user?user.name[0].toUpperCase():'?';
   }
@@ -2278,42 +2303,40 @@ function updateHeader(){
 }
 
 // ===== AVATAR UPLOAD =====
-window.triggerAvatarUpload = () => {
+window.triggerAvatarUpload = (sport) => {
   if(!state.currentUser) { toast('🔐 Connectez-vous !', false); return; }
-  // Only allow upload when viewing own profile
   if(viewingProfileUserId && viewingProfileUserId !== state.currentUser) return;
-  document.getElementById('avatarFileInput').click();
+  const sp = sport || 'f1';
+  document.getElementById(sp==='f1' ? 'avatarFileInputF1' : 'avatarFileInputMGP').click();
 };
 
-window.handleAvatarUpload = async (event) => {
+window.handleAvatarUpload = async (event, sport) => {
   const file = event.target.files[0];
   if(!file) return;
   if(!file.type.startsWith('image/')) { toast('❌ Fichier image requis', false); return; }
   if(file.size > 5 * 1024 * 1024) { toast('❌ Image trop lourde (max 5 Mo)', false); return; }
 
-  const av = document.getElementById('profileAvatar');
-  av.classList.add('uploading');
-  const overlayText = document.getElementById('avatarOverlayText');
-  if(overlayText) overlayText.textContent = '…';
+  const sp = sport || 'f1';
+  const avId = sp==='f1' ? 'profileAvatarF1' : 'profileAvatarMGP';
+  const fieldName = sp==='f1' ? 'photoF1' : 'photoMotoGP';
+  const av = document.getElementById(avId);
+  if(av) av.classList.add('uploading');
 
   try {
     const uid = state.currentUser;
-    // Compress to base64 and store directly in Firestore
     const base64 = await compressToBase64(file, 200, 0.75);
-    await setDoc(doc(db,'users',uid), {photoURL: base64}, {merge: true});
-    // Update local state immediately
+    await setDoc(doc(db,'users',uid), {[fieldName]: base64}, {merge: true});
     const userIdx = state.users.findIndex(u=>u.id===uid);
-    if(userIdx > -1) state.users[userIdx].photoURL = base64;
+    if(userIdx > -1) state.users[userIdx][fieldName] = base64;
     renderProfile();
     updateHeader();
-    toast('✅ Photo mise à jour !', true);
+    const label = sp==='f1' ? 'F1' : 'MotoGP';
+    toast('✅ Photo ' + label + ' mise à jour !', true);
   } catch(e) {
     console.error(e);
     toast('❌ Erreur: ' + e.message, false);
   } finally {
-    av.classList.remove('uploading');
-    const overlayText2 = document.getElementById('avatarOverlayText');
-    if(overlayText2) overlayText2.textContent = 'CHANGER';
+    if(av) av.classList.remove('uploading');
     event.target.value = '';
   }
 };
@@ -2801,8 +2824,10 @@ function renderLoginUserGrid(){
   }
   if(noUsers) noUsers.style.display = 'none';
   grid.innerHTML = validUsers.map(u=>{
-    const avatarContent = u.photoURL
-      ? `<img src="${u.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    const _sp = state.currentSport || 'f1';
+    const _chipPhoto = (_sp==='f1' ? u.photoF1 : u.photoMotoGP) || u.photoURL;
+    const avatarContent = _chipPhoto
+      ? `<img src="${_chipPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
       : u.name[0].toUpperCase();
     return `<div class="login-chip" onclick="loginSelectUser('${u.id}')">
       <div class="lc-av">${avatarContent}</div>
@@ -3007,10 +3032,12 @@ function updateProfileBanner(){
 }
 
 // Helper: render avatar (photo or initial letter)
-function renderAvatarEl(el, user, size='normal'){
+function renderAvatarEl(el, user, size='normal', sport){
   if(!el || !user) return;
-  if(user.photoURL){
-    el.innerHTML = `<img src="${user.photoURL}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  const sp = sport || state.currentSport || 'f1';
+  const photo = (sp==='f1' ? user.photoF1 : user.photoMotoGP) || user.photoURL;
+  if(photo){
+    el.innerHTML = `<img src="${photo}" alt="${user.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
   } else {
     el.innerHTML = user.name[0].toUpperCase();
   }
@@ -3025,20 +3052,19 @@ function renderProfile(){
   const user=state.users.find(u=>u.id===uid);
 
   // Show/hide upload overlay: only on own profile
-  const av = document.getElementById('profileAvatar');
-  const overlayEl = document.getElementById('profileAvatarOverlay');
-  if(av) av.style.cursor = 'pointer';
-  if(overlayEl) overlayEl.style.display = isOwnProfile ? '' : 'none';
-  // Set onclick: own profile → upload (or lightbox if has photo), other → lightbox
-  if(av){
-    av.onclick = null;
-    if(isOwnProfile){
-      av.onclick = () => triggerAvatarUpload();
-    } else {
-      const _u = state.users.find(u=>u.id===uid);
-      av.onclick = () => openAvatarLightbox(_u?.photoURL, _u?.name);
-    }
-  }
+  const avF1 = document.getElementById('profileAvatarF1');
+  const avMGP = document.getElementById('profileAvatarMGP');
+  [avF1, avMGP].forEach(av => { if(av) av.style.cursor='pointer'; });
+  // Show overlay only on own profile
+  document.querySelectorAll('#profileAvatarF1 .av-upload-overlay, #profileAvatarMGP .av-upload-overlay').forEach(el => {
+    el.style.display = isOwnProfile ? '' : 'none';
+  });
+  if(avF1) avF1.onclick = isOwnProfile
+    ? () => triggerAvatarUpload('f1')
+    : () => { if(avF1._photo) openAvatarLightbox(avF1._photo, avF1._photoLabel); };
+  if(avMGP) avMGP.onclick = isOwnProfile
+    ? () => triggerAvatarUpload('motogp')
+    : () => { if(avMGP._photo) openAvatarLightbox(avMGP._photo, avMGP._photoLabel); };
   // Show/hide logout button
   const logoutBtn = document.getElementById('logoutBtn');
   if(logoutBtn) logoutBtn.style.display = isOwnProfile ? '' : 'none';
@@ -3060,28 +3086,36 @@ function renderProfile(){
   const lb=leaderboard();
   const rank=lb.findIndex(u=>u.id===uid)+1;
 
-  // Set avatar (photo or letter)
-  const letter = document.getElementById('profileAvatarLetter');
-  if(av){
-    if(user.photoURL){
+  // Set avatars (F1 + MotoGP)
+  function setAvatar(avEl, letterId, photo, sport, userName) {
+    if(!avEl) return;
+    const letter = document.getElementById(letterId);
+    if(photo) {
       if(letter) letter.style.display='none';
-      let img = av.querySelector('img.profile-photo');
+      let img = avEl.querySelector('img.profile-photo');
       if(!img){
         img = document.createElement('img');
         img.className = 'profile-photo';
-        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%';
-        av.insertBefore(img, av.firstChild);
+        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;pointer-events:none';
+        avEl.insertBefore(img, avEl.firstChild);
       }
-      img.src = user.photoURL;
-      // Click on photo → lightbox (works for both own and other profiles)
-      img.onclick = (e) => { e.stopPropagation(); openAvatarLightbox(user.photoURL, user.name); };
-      img.style.cursor = 'zoom-in';
+      img.src = photo;
+      img.onclick = null;
+      img.style.cursor = '';
+      // Le clic est géré par avEl (upload si own, lightbox si autre)
+      avEl._photo = photo;
+      avEl._photoLabel = userName + ' · ' + (sport==='f1'?'F1':'MotoGP');
     } else {
-      if(letter){ letter.style.display=''; letter.textContent = user.name[0].toUpperCase(); }
-      const img = av.querySelector('img.profile-photo');
+      if(letter){ letter.style.display=''; letter.textContent = userName[0].toUpperCase(); }
+      const img = avEl.querySelector('img.profile-photo');
       if(img) img.remove();
+      avEl._photo = null;
     }
   }
+  const photoF1 = user.photoF1 || user.photoURL || null;
+  const photoMGP = user.photoMotoGP || user.photoURL || null;
+  setAvatar(document.getElementById('profileAvatarF1'), 'profileAvatarLetterF1', photoF1, 'f1', user.name);
+  setAvatar(document.getElementById('profileAvatarMGP'), 'profileAvatarLetterMGP', photoMGP, 'motogp', user.name);
 
   document.getElementById('profileName').textContent=user.name;
   document.getElementById('profileRank').textContent=`Rang #${rank} au classement ${state.currentSport==='f1'?'F1':'MotoGP'}`;
@@ -3348,8 +3382,10 @@ function renderChatMessages(){
     const uid = state.currentUser;
 
     // Avatar
-    const avInner = user?.photoURL
-      ? `<img src="${user.photoURL}" alt="${name}">`
+    const _msgSp = state.currentSport || 'f1';
+    const _msgPhoto = user ? ((_msgSp==='f1' ? user.photoF1 : user.photoMotoGP) || user.photoURL) : null;
+    const avInner = _msgPhoto
+      ? `<img src="${_msgPhoto}" alt="${name}">`
       : `<span>${name[0].toUpperCase()}</span>`;
 
     // Reaction chips
